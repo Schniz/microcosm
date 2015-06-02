@@ -10,7 +10,6 @@ const Store   = require('./Store')
 const install = require('./install')
 const remap   = require('./remap')
 const run     = require('./run')
-const tag     = require('./tag')
 
 class Microcosm extends Foliage {
 
@@ -79,7 +78,12 @@ class Microcosm extends Foliage {
    * @return this
    */
   addStore(key, config) {
+    if (process.env.NODE_ENV !== 'production' && typeof key !== 'string') {
+      throw TypeError(`Microcosm::addStore expected string key but was given: ${ typeof key }. Did you forget to include the key?`)
+    }
+
     this.stores[key] = new Store(config, key)
+
     return this
   }
 
@@ -154,10 +158,10 @@ class Microcosm extends Foliage {
    * @return action result
    */
   push(action, ...params) {
-    let signal = new Signal(action, params)
+    let signal = new Signal(action, params, this._state)
     let dispatch = this.dispatch.bind(this, action)
 
-    return signal.pipe(dispatch)
+    return signal.then(body => this.dispatch(signal, body))
   }
 
   /**
@@ -188,18 +192,16 @@ class Microcosm extends Foliage {
    * @param payload - Data to send to stores associated with the action
    * @return payload
    */
-  dispatch(action, payload) {
-    tag(action)
-
+  dispatch(signal, body) {
     for (let key in this.stores) {
-      let state = this.get(key)
-      let store = this.stores[key]
+      let subset = signal.state[key]
+      let store  = this.stores[key]
 
-      this.set(key, store.send(state, action, payload))
+      this.set(key, store.send(subset, signal.action, body))
       this.volley()
     }
 
-    return payload
+    return body
   }
 
 }
