@@ -14,7 +14,7 @@ describe('Signal', function() {
   it ('waits for promises before calling next', function(done) {
     let signal = new Signal(params => Promise.resolve(params), [true])
 
-    signal.pipe(params => {
+    signal.then(params => {
       params.should.equal(true)
       done()
     })

@@ -27,7 +27,6 @@ describe('Microcosm', function() {
   })
 
   describe('::push', function() {
-
     it ('throws an error if asked to push a non-function value', function(done) {
       try {
         app.push(null)
@@ -36,84 +35,27 @@ describe('Microcosm', function() {
         done()
       }
     })
-
-    describe('when sending an action with callback', function() {
-
-      it ('sends a message to the dispatcher', function(done) {
-        sinon.spy(app, 'dispatch')
-
-        app.push((params, next) => setTimeout(next, 100), 'params', function() {
-          app.dispatch.should.have.been.called
-          done()
-        })
-      })
-
-      it ('does not dispatch when an error is provided', function(done) {
-        let warn = (params, next) => next('issue')
-
-        sinon.spy(app, 'dispatch')
-
-        app.push(warn, 'params', function(error) {
-          error.should.equal('issue')
-          app.dispatch.should.not.have.been.called
-          done()
-        })
-      })
-    })
-
-    describe('when sending an action that returns a promise', function() {
-      it ('sends a messages to the dispatcher', function(done) {
-        sinon.spy(app, 'dispatch')
-
-        app.push(i => Promise.resolve(i), true).then(function() {
-          app.dispatch.should.have.been.called
-          done()
-        })
-      })
-
-      it ('does not dispatch a rejected promise', function(done) {
-        let warn = params => Promise.reject('issue')
-
-        sinon.spy(app, 'dispatch')
-
-        app.push(warn, 'params').catch(function(error) {
-          error.should.equal('issue')
-          app.dispatch.should.not.have.been.called
-          done()
-        })
-      })
-    })
-
-    describe('when sending an action that returns a value', function() {
-
-      it ('sends a messages to the dispatcher', function() {
-        let add = (one, two) => one + two
-
-        sinon.spy(app, 'dispatch')
-
-        app.push(add, 1, 2)
-
-        app.dispatch.should.have.been.calledWith(add, 3)
-      })
-
-    })
-
   })
 
   describe('::dispatch', function() {
-    let local;
-
-    beforeEach(function(done) {
-      local = new Microcosm()
-      local.addStore('another-store', { respond: () => true })
-      local.start(done)
+    it ('commits changes if a store changes', function(done) {
+      app.listen(function() {
+        app.get('dummy').should.equal('wut')
+        done()
+      })
+      app.push(Action, 'wut')
     })
 
-    it ('commits changes if a store can respond', function(done) {
-      local.listen(done)
-      local.dispatch('respond')
-    })
+    it ('does not commit a change if no store changes', function(done) {
+      sinon.spy(app, 'volley')
 
+      app.push(Action, app.get('dummy'))
+
+      requestAnimationFrame(function() {
+        app.volley.should.not.have.been.called
+        done()
+      })
+    })
   })
 
   describe('::addPlugin', function() {

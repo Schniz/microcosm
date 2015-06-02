@@ -198,7 +198,6 @@ class Microcosm extends Foliage {
       let store  = this.stores[key]
 
       this.set(key, store.send(subset, signal.action, body))
-      this.volley()
     }
 
     return body
