@@ -4,13 +4,16 @@
  */
 
 let uid = 0
+let known = {}
 
 module.exports = function(fn) {
-  let name = fn.name || 'microcosm_action'
-  let mark = uid++
+  let name = fn.name || 'action'
+  let mark = (name in known) ? `${ name }-${ uid++}` : name
+
+  known[name] = true
 
   if (!fn.hasOwnProperty('toString')) {
-    fn.toString = () => `${ name }_${ mark }`
+    fn.toString = () => mark
   }
 
   return fn

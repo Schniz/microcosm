@@ -23,6 +23,10 @@ Store.prototype = {
     return {}
   },
 
+  willRespondTo(action) {
+    return !!this.register()[action]
+  },
+
   send(state, action, params) {
     let task  = this.register()[action]
     return task? task.call(this, state, params) : state

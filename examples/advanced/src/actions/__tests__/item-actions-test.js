@@ -2,7 +2,7 @@ import App         from '../../App'
 import ItemActions from '../items'
 import ListActions from '../lists'
 
-describe('Item Actions', function() {
+describe.skip('Item Actions', function() {
   var app;
 
   beforeEach(function(done) {
@@ -31,6 +31,7 @@ describe('Item Actions', function() {
       app.push(ListActions.add, { name: 'parent' })
       app.push(ItemActions.add, { name, list: app.get(['lists', 0, 'id']) })
       app.push(ItemActions.remove, app.get(['items', 0, 'id']))
+      console.log(app.get('items'))
     })
 
     it ('remove the item by id', function() {

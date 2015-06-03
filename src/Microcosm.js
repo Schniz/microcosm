@@ -18,6 +18,7 @@ class Microcosm extends Foliage {
 
     this.stores  = {}
     this.plugins = []
+    this.queue   = []
   }
 
   /**
@@ -149,58 +150,49 @@ class Microcosm extends Foliage {
     return this
   }
 
-  /**
-   * Resolves an action. If it resolved successfully, it dispatches that
-   * the resulting parameters to registered stores for transformation.
-   *
-   * @param {Function} action - The action to dispatch
-   * @param {...any} params - Arguments the action is called with
-   * @return action result
-   */
-  push(action, ...params) {
-    let signal = new Signal(action, params, this._state)
-    let dispatch = this.dispatch.bind(this, action)
-
-    return signal.then(body => this.dispatch(signal, body))
-  }
-
-  /**
-   * Partially applies `push`.
-   *
-   * @param {Function} action - The action to bind
-   * @param {...any} params - Prefilled arguments
-   * @return function
-   */
   prepare(action, ...params) {
     return this.push.bind(this, action, ...params)
   }
 
-  /**
-   * Sends a message to each known store asking if it can respond to the
-   * provided action. If so, takes the returned new state for that store's
-   * managed key and assigns it as new state.
-   *
-   * This will trigger a change event if any of the stores return a new
-   * state.
-   *
-   * Normally, this function is not called directly. `dispatch` is fire and
-   * forget. For almost every use case, `app.push` should be instead as it
-   * provides a mechanism for error handing and callbacks.
-   *
-   * @private
-   * @param action - An action function. This will used by Store::register
-   * @param payload - Data to send to stores associated with the action
-   * @return payload
-   */
-  dispatch(signal, body) {
-    for (let key in this.stores) {
-      let subset = signal.state[key]
-      let store  = this.stores[key]
+  replay() {
+    let state = this.queue.reduce(this.dispatch.bind(this),
+                                  this.getInitialState())
+    this.update(state)
+  }
 
-      this.set(key, store.send(subset, signal.action, body))
+  record(signal, body) {
+    let current = this.queue.filter(i => i.signal === signal)[0]
+
+    if (current) {
+      current.body = body
+    } else {
+      this.queue.push({ signal, action: signal.action, body })
     }
 
+    this.replay()
+
     return body
+  }
+
+  forget(signal, error) {
+    this.queue = this.queue.filter(i => i.signal !== signal)
+
+    this.replay()
+
+    return error
+  }
+
+  push(action, ...params) {
+    let signal = new Signal(action, params)
+
+    return signal.then(body  => this.record(signal, body),
+                       error => this.forget(signal, error))
+  }
+
+  dispatch(state, { action, body }) {
+    return remap(this.stores, (store, key) => {
+      return store.send(state[key], action, body)
+    })
   }
 
 }

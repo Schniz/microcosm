@@ -2,7 +2,7 @@ var config = Object.create(require('../webpack.config'))
 var path   = require('path')
 
 config.context = __dirname
-config.devtool = '#eval-source-map'
+config.devtool = 'inline-source-map'
 
 config.entry = {
   'advanced' : './advanced/src/index',

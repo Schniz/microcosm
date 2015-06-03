@@ -2,7 +2,7 @@ import App         from '../../App'
 import ListActions from '../lists'
 import ItemActions from '../items'
 
-describe('List Actions', function() {
+describe.skip('List Actions', function() {
   var app;
 
   beforeEach(function(done) {

@@ -21,6 +21,12 @@ module.exports = function(config) {
 
     reporters: [ 'mocha', 'coverage' ],
 
+    client: {
+      mocha: {
+        timeout: 500
+      }
+    },
+
     mochaReporter: {
       output: 'minimal'
     },

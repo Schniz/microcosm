@@ -1,17 +1,24 @@
 let Microcosm  = require('../Microcosm')
 
 describe('When dispatching promises', function() {
-  let add   = n => Promise.resolve(n)
-  let error = n => Promise.reject(n)
-  let chain = n => Promise.resolve(n).then(n => Promise.resolve(n + 1))
+  let single = function(n) {
+    return Promise.resolve(n)
+  }
+  let chain  = n => Promise.resolve(n).then(n => Promise.resolve(n))
+  let error  = function(n) {
+    return new Promise(function (resolve, reject) {
+      setTimeout(_ => reject('Purposeful error'), 50)
+    })
+  }
   let app;
 
   let TestStore = {
     getInitialState: () => 1,
     register() {
       return {
-        [add]   : (a, b) => a + b,
-        [chain] : (a, b) => b
+        [single] : (a, b) => b,
+        [chain]  : (a, b) => b,
+        [error]  : (a, b) => b
       }
     }
   }
@@ -22,32 +29,35 @@ describe('When dispatching promises', function() {
     app.start(done)
   })
 
-  it ('properly reduces from a store', function(done) {
+  it ('waits for the promise to resolve', function(done) {
     app.listen(function() {
-      app.get('test').should.equal(app.stores.test.getInitialState() + 2)
+      app.get('test').should.equal(2)
       done()
-    }).push(add, 2)
+    }).push(single, 2)
   })
 
   it ('does not dispatch if the promise fails', function(done) {
     sinon.spy(app, 'dispatch')
 
-    app.push(error)
-
-    requestAnimationFrame(function() {
+    app.push(error).then(null, function() {
       app.dispatch.should.not.have.been.called
       done()
     })
   })
 
   it ('waits for all promises in the chain to resolve', function(done) {
-    sinon.spy(app, 'dispatch')
-
-    app.push(chain, 1)
-
-    requestAnimationFrame(function() {
-      app.get('test').should.equal(2)
+    app.push(chain, 1).then(function() {
+      app.get('test').should.equal(1)
       done()
     })
+  })
+
+  it ('respects future changes when it fails', function(done) {
+    app.push(error, 1).catch(function() {
+      app.get('test').should.equal(4)
+      done()
+    })
+
+    app.push(single, 4)
   })
 })

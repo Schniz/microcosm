@@ -3,46 +3,44 @@
  * Currently, it handles values, and promises
  */
 
-import tag from './tag'
+let isGenerator = require('./isGenerator')
+let isPromise   = require('./isPromise')
+let tag         = require('./tag')
+let uid         = 0
 
-function Signal (action, params, state) {
+function Signal (action, params) {
   if (process.env.NODE_ENV !== 'production' && typeof action !== 'function') {
     throw TypeError(`${ action } is not a function. Was app.push() called with the wrong value?`)
   }
 
+  this.id     = uid++
   this.action = tag(action)
   this.value  = action.apply(undefined, params)
-  this.state  = state
 }
 
 Signal.prototype = {
-  then(next) {
-    return this.pipe(this.value, next)
+  then(resolve, reject) {
+    return this.pipe(resolve, reject, this.value)
   },
 
-  pipe(body, next) {
-    if (body) {
-      // When actions return thenables, wait for them to resolve
-      // before moving on
-      if (typeof body.then === 'function') {
-        // Return a thenable without catching a rejection
-        return body.then(result => this.pipe(result, next))
-      }
+  pipe(resolve, reject, body) {
+    let next = this.pipe.bind(this, resolve, reject)
 
-      // When actions return iterators, resolve all of them
-      // sequentially
-      if (typeof body.next === 'function') {
-        for (var value of body) {
-          this.pipe(value, next)
-        }
-        // Return the value of the last iteration
-        return value
-      }
+    if (isPromise(body)) {
+      body.then(next, reject)
+      return body
     }
 
-    next(body)
+    if (isGenerator(body)) {
+      for (var value of body) next(value)
+      return value
+    }
 
-    return body
+    return resolve(body)
+  },
+
+  toString() {
+    return `signal-${ this.id }:${ this.action }`
   }
 }
 
